@@ -1,12 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response, status
 from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
 
 from .settings import settings
 from .routers import hashing, matching
 from .ui import app as ui
 
-app = FastAPI(title="Fast Hasher Matcher")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+  print(f"App Started {app.title}")
+  yield
+  print("App stopped")
+
+app = FastAPI(title="Fast Hasher Matcher", lifespan=lifespan)
 
 if settings.role_hasher:
   app.include_router(

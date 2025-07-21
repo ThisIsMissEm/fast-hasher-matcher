@@ -38,12 +38,12 @@ def get_storage() -> IUnifiedStore:
     Holdover from earlier development, maybe remove someday.
     """
     return t.cast(IUnifiedStore, DefaultOMMStore(
-    signal_types=[PdqSignal, VideoMD5Signal],
-    content_types=[PhotoContent, VideoContent],
-    exchange_types=[
-        StaticSampleSignalExchangeAPI,
-        FBThreatExchangeSignalExchangeAPI,  # type: ignore
-        NCMECSignalExchangeAPI,  # type: ignore
-        StopNCIISignalExchangeAPI,
-    ],
-))
+        signal_types=[PdqSignal, VideoMD5Signal],
+        content_types=[PhotoContent, VideoContent],
+        exchange_types=[
+            StaticSampleSignalExchangeAPI,
+            FBThreatExchangeSignalExchangeAPI,
+            NCMECSignalExchangeAPI,
+            StopNCIISignalExchangeAPI,
+        ],
+    ))

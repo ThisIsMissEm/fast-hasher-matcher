@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from ...settings import get_settings
 
-engine = create_engine(get_settings().database_url.encoded_string(), pool_pre_ping=True)
+engine = create_engine(get_settings().database_url.encoded_string(), pool_pre_ping=True, echo=True)
 
 @lru_cache
 def create_session() -> scoped_session:
