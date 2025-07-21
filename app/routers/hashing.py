@@ -1,3 +1,5 @@
+import typing as t
+
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ValidationError
@@ -7,11 +9,13 @@ import tempfile
 from pydantic_core import InitErrorDetails, PydanticCustomError
 import requests
 
+from threatexchange.content_type.content_base import ContentType
 from threatexchange.content_type.photo import PhotoContent
 from threatexchange.content_type.video import VideoContent
-from threatexchange.signal_type.md5 import VideoMD5Signal
-from threatexchange.signal_type.pdq.signal import PdqSignal
-from threatexchange.signal_type.signal_base import FileHasher, BytesHasher
+from threatexchange.signal_type.signal_base import FileHasher, BytesHasher, SignalType
+from threatexchange.storage.interfaces import ContentTypeConfig
+
+from app.storage.adapter import get_storage
 
 from ..hashing.remote_file import is_valid_url
 from ..settings import settings
@@ -61,7 +65,7 @@ async def hash(request: Request, url: str):
 
                 path = Path(tmp.name)
 
-                for st in signal_types:
+                for st in signal_types.values():
                     if issubclass(st, FileHasher):
                         results.append({
                             'signal_name': st.get_name(),
@@ -82,7 +86,7 @@ def hash_file(file: UploadFile):
     logger.info("%s is type %s", file.filename, content_type)
 
     bytes = file.file.read()
-    for st in signal_types:
+    for st in signal_types.values():
         if issubclass(st, BytesHasher):
             results.append({
                 'signal_name': st.get_name(),
@@ -91,11 +95,14 @@ def hash_file(file: UploadFile):
     
     return { 'results': results }
 
-def get_content_type(content_type: str, remote: bool = False) -> str:
+def get_content_type(content_type: str, remote: bool = False) -> t.Type[ContentType]:
+    content_type_configs = get_storage().get_content_type_configs()
+    config: ContentTypeConfig
+
     if content_type.lower().startswith("image"):
-        return PhotoContent.get_name()
+        config = content_type_configs.get(PhotoContent.get_name())
     elif content_type.lower().startswith("video") or content_type.lower() == 'application/octet-stream':
-        return VideoContent.get_name()
+        config = content_type_configs.get(VideoContent.get_name())
     else:
         raise RequestValidationError(
             errors=(
@@ -110,13 +117,26 @@ def get_content_type(content_type: str, remote: bool = False) -> str:
                 )
             ).errors()
         )
-
-def get_signal_types(content_type: str):
-    # signal_types = get_storage().get_enabled_signal_types_for_content_type(content_type)
-    if content_type == VideoContent.get_name():
-        return [VideoMD5Signal]
     
-    if content_type == PhotoContent.get_name():
-        return [PdqSignal]
+    if config is None:
+        raise HTTPException(400, 'Unknown content type')
 
-    return []
+    if not config.enabled:
+        raise HTTPException(400, 'Content type {content_type} is disabled')
+
+    return config.content_type
+
+
+def get_signal_types(content_type: ContentType) -> t.Mapping[str, t.Type[SignalType]]:
+    signal_types = get_storage().get_enabled_signal_types_for_content_type(content_type)
+    if not signal_types:
+        raise HTTPException(500, "No signal types configured!")
+
+    return signal_types
+    # if content_type.get_name() == VideoContent.get_name():
+    #     return [VideoMD5Signal]
+    
+    # if content_type.get_name() == PhotoContent.get_name():
+    #     return [PdqSignal]
+
+    # return []

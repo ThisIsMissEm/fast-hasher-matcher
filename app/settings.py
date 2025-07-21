@@ -1,6 +1,9 @@
+from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+  database_url: PostgresDsn
+
   role_matcher: bool = True
   role_hasher: bool = True
   role_curator: bool = True
@@ -15,3 +18,6 @@ settings = Settings()
 
 settings.allowed_hostnames.add("github.com")
 settings.allowed_hostnames.add("raw.githubusercontent.com")
+
+def get_settings() -> Settings:
+    return settings
