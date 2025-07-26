@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response, status
 from fastapi.responses import RedirectResponse
 
+from .storage.database.connection import engine
+
 from .settings import settings
 from .routers import hashing, matching
 from .ui import app as ui
@@ -10,6 +12,7 @@ from .ui import app as ui
 async def lifespan(app: FastAPI):
   print(f"App Started {app.title}")
   yield
+  engine.dispose()
   print("App stopped")
 
 app = FastAPI(title="Fast Hasher Matcher", lifespan=lifespan)
